@@ -30,6 +30,7 @@ public class AssemblyGenerator {
     private BMap<IRVariable, List<Addr>> Addr_descripe = new BMap<>();  // 地址描述符
     private ArrayList IRVar = new ArrayList<IRVariable>();              // 所有指令的变量，用于判断某一变量之后是否还会用到
     private int var_id = 0;                                             // 变量id，用于判断某一变量之后是否还会用到
+    private int point = 0;                                              // 用于指示变量存放地址的偏移量
     /**
      * 加载前端提供的中间代码
      * <br>
@@ -252,7 +253,45 @@ public class AssemblyGenerator {
                 return reg;
             }
         }
-        // 上述方法不管用，说明需要将某些变量暂存到内存中
+        // 上述方法不管用，说明需要将某个变量暂存到内存中
+        // 随机取一个寄存器进行替换
+        Random r = new Random();
+        Reg replace_reg = new Reg(r.nextInt(7));                    // 要替换变量的寄存器
+        IRVariable replace_var = Reg_descripe.getByKey(replace_reg);       // 要被替换的变量
+
+        // 将要替换的变量存入内存
+        // 内存中是否已经有被替换变量的值
+        boolean save_flag = false;  // 用于判断被替换变量是否已存到内存
+        for(Addr addr : Addr_descripe.getByKey(replace_var)){
+            if (addr instanceof Offset){            // 被替换变量的值在内存地址中，则存储回同一位置
+                asm_list.add(generate_asm("sw",replace_reg.toString(),addr.toString()));
+                save_flag = true;
+            }
+        }
+        if(!save_flag){             // 内存中没有被替换变量的位置，则需为其分配空间
+            Offset off = new Offset(point);
+            asm_list.add(generate_asm("sw",replace_reg.toString(),off.toString()));
+            // 更新指针
+            point += 4;
+            // 新增被替换变量的地址描述符
+            Addr_descripe.getByKey(replace_var).add(off);
+        }
+
+        // 判断在内存地址中是否有当前变量的值
+        for(Addr addr : Addr_descripe.getByKey(var)){
+            if (addr instanceof Offset){            // 当前变量的值在内存地址中，则需先恢复该值
+                asm_list.add(generate_asm("lw",replace_reg.toString(),addr.toString()));
+            }
+        }
+        // 更新寄存器描述符
+        Reg_descripe.replace(replace_reg,var);
+        // 更新地址描述符
+        Addr_descripe.getByKey(replace_var).remove(replace_reg);
+        Addr_descripe.getByKey(var).add(replace_reg);
+
+
+
+
 
         return null;
 
