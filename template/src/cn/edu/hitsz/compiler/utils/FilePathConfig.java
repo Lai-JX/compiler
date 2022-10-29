@@ -10,6 +10,8 @@ public final class FilePathConfig {
      */
     public static final String SRC_CODE_PATH = "data/in/input_code.txt";
 
+    public static final String REG_ALLOC_SRC_COOD_PATH = "data/in/reg-alloc.txt";
+
     /**
      * 编码表
      */

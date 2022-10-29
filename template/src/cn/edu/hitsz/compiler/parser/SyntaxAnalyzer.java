@@ -118,7 +118,6 @@ public class SyntaxAnalyzer {
         while (flag){
             // 根据当前状态与规约到非终结符获得应转移到的状态
             action = lrTable.getAction(stack_state.peek(),current_read);
-//            System.out.println(action.toString());
             switch (action.getKind()) {
                 case Shift -> {     // 移入
                     final var shiftTo = action.getStatus();

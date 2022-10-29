@@ -41,7 +41,7 @@ public class LexicalAnalyzer {
         // TODO: 词法分析前的缓冲区实现
         // 可自由实现各类缓冲区
         // 或直接采用完整读入方法
-        File file = new File(FilePathConfig.SRC_CODE_PATH);
+        File file = new File(path);
         InputStream input = new FileInputStream(file);
         byte[] b = new byte[(int)file.length()];
         input.read(b,0,b.length);
@@ -92,6 +92,10 @@ public class LexicalAnalyzer {
 
                 // 没找到保留字，则说明该词为变量名
                 if(!flag){
+                    while (isDigit(ch) || isLetter(ch)){
+                        ch = buffer[++i];
+                    }
+                    word = new String(Arrays.copyOfRange(buffer, begin, i));
                     if(!symbolTable.has(word)){
                         symbolTable.add(word);
                     }

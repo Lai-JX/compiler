@@ -26,7 +26,8 @@ public class Main {
 
         // 词法分析
         final var lexer = new LexicalAnalyzer(symbolTable);
-        lexer.loadFile(FilePathConfig.SRC_CODE_PATH);
+//        lexer.loadFile(FilePathConfig.SRC_CODE_PATH);
+        lexer.loadFile(FilePathConfig.REG_ALLOC_SRC_COOD_PATH);
         lexer.run();
         lexer.dumpTokens(FilePathConfig.TOKEN_PATH);
         final var tokens = lexer.getTokens();
