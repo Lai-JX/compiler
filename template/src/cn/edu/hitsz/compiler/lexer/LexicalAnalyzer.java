@@ -92,7 +92,7 @@ public class LexicalAnalyzer {
 
                 // 没找到保留字，则说明该词为变量名
                 if(!flag){
-                    while (isDigit(ch) || isLetter(ch)){
+                    while (isDigit(ch) || isLetter(ch) || ch=='_'){
                         ch = buffer[++i];
                     }
                     word = new String(Arrays.copyOfRange(buffer, begin, i));

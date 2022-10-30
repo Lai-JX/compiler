@@ -25,11 +25,11 @@ import java.util.*;
  */
 public class AssemblyGenerator {
     private ArrayList<Instruction> IR = new ArrayList<Instruction>();
-    private ArrayList asm_list = new ArrayList<String>();               // 汇编指令
-    private BMap<Reg, IRVariable> Reg_descripe = new BMap<>();          // 寄存器描述符
-    private BMap<IRVariable, List<Addr>> Addr_descripe = new BMap<>();  // 地址描述符
+    private ArrayList asmList = new ArrayList<String>();               // 汇编指令
+    private BMap<Reg, IRVariable> regDescripe = new BMap<>();          // 寄存器描述符
+    private BMap<IRVariable, List<Addr>> addrDescripe = new BMap<>();  // 地址描述符
     private ArrayList IRVar = new ArrayList<IRVariable>();              // 所有指令的变量，用于判断某一变量之后是否还会用到
-    private int var_id = 0;                                             // 变量id，用于判断某一变量之后是否还会用到
+    private int varId = 0;                                             // 变量id，用于判断某一变量之后是否还会用到
     private int point = 0;                                              // 用于指示变量存放地址的偏移量
     /**
      * 加载前端提供的中间代码
@@ -107,7 +107,7 @@ public class AssemblyGenerator {
 
         // 初始化寄存器描述符
         for (int i=0; i<7; i++){
-            Reg_descripe.add(new Reg(i), IRVariable.named(""+(i-7)));
+            regDescripe.add(new Reg(i), IRVariable.named(""+(i-7)));
         }
 
         // 获取的所有变量,添加地址描述符
@@ -115,14 +115,14 @@ public class AssemblyGenerator {
             // 添加结果变量
             if(!instruction.getKind().equals(InstructionKind.RET)){
                 IRVar.add(instruction.getResult());
-                Addr_descripe.add(instruction.getResult(),new ArrayList<Addr>());
+                addrDescripe.add(instruction.getResult(),new ArrayList<Addr>());
             }
             // 添加操作数变量
             List<IRValue> ops = instruction.getALlOperands();   // 获取所有操作数
             for (IRValue var : ops){
                 if(var.isIRVariable()){
                     IRVar.add(var);
-                    Addr_descripe.add((IRVariable) var,new ArrayList<Addr>());
+                    addrDescripe.add((IRVariable) var,new ArrayList<Addr>());
                 }
             }
         }
@@ -141,7 +141,7 @@ public class AssemblyGenerator {
     public void run() {
         // TODO: 执行寄存器分配与代码生成
         String asm_temp=null;
-        asm_list.add(".text\n");
+        asmList.add(".text\n");
         // 对每条中间代码指令添加汇编代码
         for (Instruction instruction : IR){
             Reg res=null;                                               // 保存运算结果的寄存器
@@ -155,12 +155,12 @@ public class AssemblyGenerator {
 
                     // 根据第二个操作数是立即数还是变量，判断使用addi还是add
                     if (instruction.getRHS().isImmediate()){        // addi
-                        asm_temp = generate_asm("addi", res.toString(),reg_l.toString(),instruction.getRHS().toString());
-                        var_id +=2;     // 已访问变量数加2
+                        asm_temp = generateAsm("addi", res.toString(),reg_l.toString(),instruction.getRHS().toString());
+                        varId +=2;     // 已访问变量数加2
                     }else {                                         // add
                         Reg reg_r = getReg((IRVariable)instruction.getRHS(),res,reg_l);
-                        asm_temp = generate_asm("add", res.toString(), reg_l.toString(), reg_r.toString());
-                        var_id +=3;
+                        asm_temp = generateAsm("add", res.toString(), reg_l.toString(), reg_r.toString());
+                        varId +=3;
                     }
                 }
                 case SUB,MUL -> {
@@ -170,18 +170,18 @@ public class AssemblyGenerator {
                     if (instruction.getKind().equals(InstructionKind.MUL)){
                         op = "mul";
                     }
-                    asm_temp = generate_asm(op, res.toString(), reg_l.toString(), reg_r.toString());
-                    var_id +=3;
+                    asm_temp = generateAsm(op, res.toString(), reg_l.toString(), reg_r.toString());
+                    varId +=3;
                 }
                 case MOV -> {
                     if (instruction.getFrom().isImmediate()){
-                        asm_temp = generate_asm("li", res.toString(), instruction.getFrom().toString());
-                        var_id +=1;
+                        asm_temp = generateAsm("li", res.toString(), instruction.getFrom().toString());
+                        varId +=1;
                     }
                     else {
                         Reg reg_l = getReg((IRVariable)instruction.getFrom(),res,null);
-                        asm_temp = generate_asm("mv", res.toString(), reg_l.toString());
-                        var_id +=2;
+                        asm_temp = generateAsm("mv", res.toString(), reg_l.toString());
+                        varId +=2;
                     }
                 }
                 case RET -> {
@@ -196,7 +196,7 @@ public class AssemblyGenerator {
                     IR.add(instruction);
                 }
             }
-            asm_list.add(asm_temp += "\t#" + instruction + "\n");
+            asmList.add(asm_temp += "\t#" + instruction + "\n");
         }
     }
 
@@ -208,8 +208,9 @@ public class AssemblyGenerator {
      */
     public void dump(String path) {
         // TODO: 输出汇编代码到文件
-        FileUtils.writeLines(path, asm_list.stream().toList());
+        FileUtils.writeLines(path, asmList.stream().toList());
     }
+    
     // 获取立即数的值
     public Integer eval(IRValue value) {
         if (value instanceof IRImmediate immediate) {
@@ -221,80 +222,75 @@ public class AssemblyGenerator {
 
     // 为指定变量分配寄存器, var为要分配寄存器的变量, reg1和reg2为其它操作数的寄存器，用于防止一条指令的多个变量共用一个寄存器
     private Reg getReg(IRVariable var, Reg reg1, Reg reg2){
-        // 变量已在寄存器中
-        if(Reg_descripe.containsValue(var)){
-            return Reg_descripe.getByValue(var);
+        // 变量已在寄存器中，直接返回寄存器
+        if(regDescripe.containsValue(var)){
+            return regDescripe.getByValue(var);
         }
         // 寻找空闲寄存器
         for (int i=0; i<7; i++){
             IRVariable empty_reg_var = IRVariable.named(""+(i-7));
-            if(Reg_descripe.containsValue(empty_reg_var)){          // 有空闲寄存器
-                Reg reg = Reg_descripe.getByValue(empty_reg_var);   // 获取空闲寄存器
+            if(regDescripe.containsValue(empty_reg_var)){          // 有空闲寄存器
+                Reg reg = regDescripe.getByValue(empty_reg_var);   // 获取空闲寄存器
                 // 判断在内存地址中是否有当前变量的值,有则恢复到寄存器
                 recover(var, reg);
-                Reg_descripe.replace(reg,var);                      // 更新寄存器描述符
-                Addr_descripe.getByKey(var).add(reg);               // 更新地址描述符
+                regDescripe.replace(reg,var);                      // 更新寄存器描述符
+                addrDescripe.getByKey(var).add(reg);               // 更新地址描述符
                 return reg;
             }
         }
         // 寻找一个之后不会被使用的变量，将其所占寄存器替换为当前变量
-        for (Object temp_reg : Reg_descripe.getAllkey().toArray()){
+        for (Object temp_reg : regDescripe.getAllkey().toArray()){
             Reg reg = (Reg)temp_reg;
-            IRVariable temp_var = Reg_descripe.getByKey(reg);
+            IRVariable temp_var = regDescripe.getByKey(reg);
             if(finish(temp_var)){       // 变量后续不会被使用
                 // 判断在内存地址中是否有当前变量的值,有则恢复到寄存器
                 recover(var, reg);
-                Reg_descripe.replace(reg,var);                  // 更新寄存器描述符
-                Addr_descripe.getByKey(temp_var).remove(reg);   // 更新地址描述符
-                Addr_descripe.getByKey(var).add(reg);
+                regDescripe.replace(reg,var);                  // 更新寄存器描述符
+                addrDescripe.getByKey(temp_var).remove(reg);   // 更新地址描述符
+                addrDescripe.getByKey(var).add(reg);
                 return reg;
             }
         }
         // 上述方法不管用，说明需要将某个变量暂存到内存中
         // 随机取一个寄存器进行替换
-        Random r = new Random(10);
+        Random r = new Random();
         Reg replace_reg = new Reg(r.nextInt(7));
         while (replace_reg.equals(reg1) || replace_reg.equals(reg2)){       // 防止一条指令的两个变量共用一个寄存器
             replace_reg = new Reg(r.nextInt(7));                    // 要替换变量的寄存器
         }
-        IRVariable replace_var = Reg_descripe.getByKey(replace_reg);       // 要被替换的变量
+        IRVariable replace_var = regDescripe.getByKey(replace_reg);       // 要被替换的变量
 
         // 将要替换的变量存入内存
         // 内存中是否已经有被替换变量的值
         boolean save_flag = false;  // 用于判断被替换变量是否已存到内存
-        for(Addr addr : Addr_descripe.getByKey(replace_var)){
+        for(Addr addr : addrDescripe.getByKey(replace_var)){
             if (addr instanceof Offset){            // 被替换变量的值在内存地址中，则存储回同一位置
-                asm_list.add(generate_asm("sw",replace_reg.toString(),addr.toString())+"\n");
+                asmList.add(generateAsm("sw",replace_reg.toString(),addr.toString())+"\n");
                 save_flag = true;
             }
         }
         if(!save_flag){             // 内存中没有被替换变量的位置，则需为其分配空间
             Offset off = new Offset(point);
-            asm_list.add(generate_asm("sw",replace_reg.toString(),off.toString())+"\n");
+            asmList.add(generateAsm("sw",replace_reg.toString(),off.toString())+"\n");
             // 更新指针
             point += 4;
             // 更新被替换变量的地址描述符
-            Addr_descripe.getByKey(replace_var).add(off);
+            addrDescripe.getByKey(replace_var).add(off);
         }
 
         // 判断在内存地址中是否有当前变量的值,有则恢复到寄存器中
         recover(var,replace_reg);
         // 更新寄存器描述符
-        Reg_descripe.replace(replace_reg,var);
+        regDescripe.replace(replace_reg,var);
         // 更新地址描述符
-        Addr_descripe.getByKey(replace_var).remove(replace_reg);
-        Addr_descripe.getByKey(var).add(replace_reg);
-
-
-
-
+        addrDescripe.getByKey(replace_var).remove(replace_reg);
+        addrDescripe.getByKey(var).add(replace_reg);
 
         return replace_reg;
-
-
     }
+
     // 将各参数组合成汇编语句
-    private String generate_asm(String... args){
+    private String generateAsm(String... args){
         String res = "\t" + args[0];
         int n = args.length-1;
         for (int i=1; i<n; i++){
@@ -306,8 +302,7 @@ public class AssemblyGenerator {
 
     // 判断某一变量之后是否还会被使用
     private boolean finish(IRVariable var){
-        for (int i=var_id+1; i<IRVar.size(); i++){
-//            System.out.println("after_var:"+IRVar.get(i));
+        for (int i=varId+1; i<IRVar.size(); i++){
             if (var.equals(IRVar.get(i))){
                 return false;       // 后续被使用
             }
@@ -317,9 +312,9 @@ public class AssemblyGenerator {
 
     // 将内存中的值恢复到指定寄存器
     private boolean recover(IRVariable variable, Reg reg){
-        for(Addr addr : Addr_descripe.getByKey(variable)){
+        for(Addr addr : addrDescripe.getByKey(variable)){
             if (addr instanceof Offset){            // 当前变量的值在内存地址中，则恢复该值到寄存器中
-                asm_list.add(generate_asm("lw",reg.toString(),addr.toString())+"\n");
+                asmList.add(generateAsm("lw",reg.toString(),addr.toString())+"\n");
                 return true;
             }
         }
