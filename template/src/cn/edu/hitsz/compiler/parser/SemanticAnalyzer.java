@@ -42,7 +42,7 @@ public class SemanticAnalyzer implements ActionObserver {
         }
     }
 
-    private Stack<Type_Token> stack_type = new Stack<>();     // 语义栈（栈中元素包含type和token）
+    private Stack<Type_Token> typeStack = new Stack<>();     // 语义栈（栈中元素包含type和token）
     private SymbolTable symbolTable;
 
 
@@ -57,24 +57,24 @@ public class SemanticAnalyzer implements ActionObserver {
 
         // TODO: 该过程在遇到 reduce production 时要采取的代码动作
         if (production.index()==5){       // D -> int
-            Type_Token temp = stack_type.pop();
-            stack_type.push(temp);
+            Type_Token temp = typeStack.pop();
+            typeStack.push(temp);
         }
         else if(production.index()==4){   // S -> D id
-            Type_Token id = stack_type.pop();
-            Type_Token D = stack_type.pop();
+            Type_Token id = typeStack.pop();
+            Type_Token D = typeStack.pop();
 
             // 更新符号表
             SymbolTableEntry symbol = symbolTable.get(id.getToken().getText());
             if(D.getType() == SourceCodeType.Int){         // 由于只有int类型，只需判断一次
                 symbol.setType(SourceCodeType.Int);
             }
-            stack_type.push(new Type_Token());   //
+            typeStack.push(new Type_Token());   //
         }
         else{
             int len_pop = production.body().size();                         // 要弹出语义栈的元素个数
             stack_pop(len_pop);                                             // 弹出
-            stack_type.push(new Type_Token());
+            typeStack.push(new Type_Token());
         }
         return;
     }
@@ -89,7 +89,7 @@ public class SemanticAnalyzer implements ActionObserver {
             type_token = new Type_Token(currentToken);
         }
 
-        stack_type.push(type_token);
+        typeStack.push(type_token);
     }
 
     @Override
@@ -101,7 +101,7 @@ public class SemanticAnalyzer implements ActionObserver {
     // 为状态栈和符号栈弹出n个元素
     private void stack_pop(int n) {
         for (int i=0;i<n;i++){
-            stack_type.pop();
+            typeStack.pop();
         }
     }
 }

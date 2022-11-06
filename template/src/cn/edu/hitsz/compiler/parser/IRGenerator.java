@@ -21,7 +21,7 @@ import java.util.Stack;
  *
  */
 public class IRGenerator implements ActionObserver {
-    private Stack<IRValue> stack_addr = new Stack<>();     // 语义栈
+    private Stack<IRValue> addrStack = new Stack<>();     // 语义栈
 //    private SymbolTable symbolTable;
     private ArrayList IR = new ArrayList<Instruction>();
 
@@ -30,13 +30,13 @@ public class IRGenerator implements ActionObserver {
         // TODO
         String  cur_tokenKind_name = currentToken.getKind().getIdentifier(); // 获取当前词的类型名
         if (cur_tokenKind_name.equals("id")){
-            stack_addr.push(IRVariable.named(currentToken.getText()));      // 将变量名入栈
+            addrStack.push(IRVariable.named(currentToken.getText()));      // 将变量名入栈
         }
         else if(cur_tokenKind_name.equals("IntConst")) {
-            stack_addr.push(IRImmediate.of(Integer.parseInt(currentToken.getText())));    // 将常量入栈
+            addrStack.push(IRImmediate.of(Integer.parseInt(currentToken.getText())));    // 将常量入栈
         }
         else{
-            stack_addr.push(IRVariable.named(cur_tokenKind_name));
+            addrStack.push(IRVariable.named(cur_tokenKind_name));
         }
         return;
     }
@@ -48,61 +48,61 @@ public class IRGenerator implements ActionObserver {
         switch (production.index()) {
 
             case 6 -> { // S -> id = E
-                IRValue E = stack_addr.pop();
-                stack_addr.pop();
-                IRValue id = stack_addr.pop();
+                IRValue E = addrStack.pop();
+                addrStack.pop();
+                IRValue id = addrStack.pop();
                 temp = Instruction.createMov((IRVariable) id, E);
                 IR.add(temp);
 
-                stack_addr.push(IRVariable.named(""));
+                addrStack.push(IRVariable.named(""));
             }
 
             case 7 -> { // S -> return E
-                IRValue E = stack_addr.pop();
-                stack_addr.pop();
+                IRValue E = addrStack.pop();
+                addrStack.pop();
                 temp = Instruction.createRet(E);
                 IR.add(temp);
 
-                stack_addr.push(IRVariable.named(""));
+                addrStack.push(IRVariable.named(""));
             }
 
             case 8 -> { // E -> E + A
-                IRValue A = stack_addr.pop();
-                stack_addr.pop();
-                IRValue E = stack_addr.pop();
+                IRValue A = addrStack.pop();
+                addrStack.pop();
+                IRValue E = addrStack.pop();
                 IRVariable result = IRVariable.temp();
                 temp = Instruction.createAdd(result, E, A);
                 IR.add(temp);
 
-                stack_addr.push(result);
+                addrStack.push(result);
             }
 
             case 9 -> { // E -> E - A
-                IRValue A = stack_addr.pop();
-                stack_addr.pop();
-                IRValue E = stack_addr.pop();
+                IRValue A = addrStack.pop();
+                addrStack.pop();
+                IRValue E = addrStack.pop();
                 IRVariable result = IRVariable.temp();
                 temp = Instruction.createSub(result, E, A);
                 IR.add(temp);
 
-                stack_addr.push(result);
+                addrStack.push(result);
             }
 
             case 11 -> { // A -> A * B
-                IRValue B = stack_addr.pop();
-                stack_addr.pop();
-                IRValue A = stack_addr.pop();
+                IRValue B = addrStack.pop();
+                addrStack.pop();
+                IRValue A = addrStack.pop();
                 IRVariable result = IRVariable.temp();
                 temp = Instruction.createMul(result, A, B);
                 IR.add(temp);
 
-                stack_addr.push(result);
+                addrStack.push(result);
             }
             case 13 -> { // B -> ( E )
-                stack_addr.pop();
-                IRValue E = stack_addr.pop();
-                stack_addr.pop();
-                stack_addr.push(E);
+                addrStack.pop();
+                IRValue E = addrStack.pop();
+                addrStack.pop();
+                addrStack.push(E);
             }
             case 1,5,10,12,14,15 -> {   // 类似 A-> B 的形式, 栈保持不变
             }
@@ -110,7 +110,7 @@ public class IRGenerator implements ActionObserver {
             default -> { //
                 int len_pop = production.body().size();                         // 要弹出语义栈的元素个数
                 stack_pop(len_pop);                                             // 弹出
-                stack_addr.push(IRVariable.named(""));
+                addrStack.push(IRVariable.named(""));
             }
         }
     }
@@ -137,7 +137,7 @@ public class IRGenerator implements ActionObserver {
     // 为状态栈和符号栈弹出n个元素
     private void stack_pop(int n) {
         for (int i=0;i<n;i++){
-            stack_addr.pop();
+            addrStack.pop();
         }
     }
 }

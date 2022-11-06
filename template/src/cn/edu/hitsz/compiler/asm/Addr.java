@@ -1,7 +1,10 @@
 package cn.edu.hitsz.compiler.asm;
 
 import java.util.Objects;
-
+/**
+ * 此类为抽象类
+ * 类Reg（寄存器（t0-t6）编号）和类Offset（内存偏移量) 需继承此类
+ */
 public abstract class Addr {
     protected final int addr_id;
 

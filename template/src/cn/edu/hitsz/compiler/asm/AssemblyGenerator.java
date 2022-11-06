@@ -24,7 +24,7 @@ import java.util.*;
  * @see AssemblyGenerator#run() 代码生成与寄存器分配
  */
 public class AssemblyGenerator {
-    private ArrayList<Instruction> IR = new ArrayList<Instruction>();
+    private ArrayList<Instruction> IR = new ArrayList<>();
     private ArrayList asmList = new ArrayList<String>();               // 汇编指令
     private BMap<Reg, IRVariable> regDescripe = new BMap<>();          // 寄存器描述符
     private BMap<IRVariable, List<Addr>> addrDescripe = new BMap<>();  // 地址描述符
@@ -192,7 +192,7 @@ public class AssemblyGenerator {
                         asm_temp = "\tmv a0, " + getReg((IRVariable) instruction.getReturnValue(),null,null);
                     }
                 }
-                default -> {            // MOV
+                default -> {
                     IR.add(instruction);
                 }
             }

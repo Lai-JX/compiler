@@ -26,8 +26,8 @@ public class SyntaxAnalyzer {
     private final List<ActionObserver> observers = new ArrayList<>();
     private List<Token> tokens = new ArrayList<>();                 // 词法单元集合
     private LRTable lrTable;                 // 词法单元集合
-    private Stack<Status> stack_state = new Stack<>();      // 状态栈
-    private Stack<Term> stack_symbol = new Stack<>();     // 符号栈
+    private Stack<Status> stateStack = new Stack<>();      // 状态栈
+    private Stack<Term> symbolStack = new Stack<>();     // 符号栈
 
 
     public SyntaxAnalyzer(SymbolTable symbolTable) {
@@ -112,18 +112,18 @@ public class SyntaxAnalyzer {
         Token current_read = tokens.get(i);;
 
         // 初始化 将初始状态和$符号入栈；
-        stack_state.push(lrTable.getInit());
-        stack_symbol.push(new NonTerminal("$"));
+        stateStack.push(lrTable.getInit());
+        symbolStack.push(new NonTerminal("$"));
 
         while (flag){
-            // 根据当前状态与规约到非终结符获得应转移到的状态
-            action = lrTable.getAction(stack_state.peek(),current_read);
+            // 根据当前状态与非终结符获得应转移到的状态
+            action = lrTable.getAction(stateStack.peek(),current_read);
             switch (action.getKind()) {
                 case Shift -> {     // 移入
                     final var shiftTo = action.getStatus();
-                    callWhenInShift(stack_state.peek(),current_read);       // 传入当前状态和词
-                    stack_state.push(shiftTo);                              // 状态入栈
-                    stack_symbol.push(current_read.getKind());              // 符号入栈
+                    callWhenInShift(stateStack.peek(),current_read);       // 传入当前状态和词
+                    stateStack.push(shiftTo);                              // 状态入栈
+                    symbolStack.push(current_read.getKind());              // 符号入栈
                     current_read = tokens.get(++i);                         // 读取符号串中的下一字符
 
                     // ...
@@ -132,19 +132,19 @@ public class SyntaxAnalyzer {
                 case Reduce -> {    // 规约
                     final var production = action.getProduction();      // 获取产生式
 //                    System.out.println(production.toString());
-                    callWhenInReduce(stack_state.peek(),production);
+                    callWhenInReduce(stateStack.peek(),production);
                     len_pop = production.body().size();                         // 要弹出栈的符号和状态个数
                     stack_pop(len_pop);                                         // 弹出符号和状态
 
-                    stack_symbol.push(production.head());                       // 产生式左部入栈
-                    stack_state.push(lrTable.getGoto(stack_state.peek(),(NonTerminal) stack_symbol.peek())); // 根据goto表将状态入栈
-//                    System.out.println(stack_state.peek().index());
+                    symbolStack.push(production.head());                       // 产生式左部入栈
+                    stateStack.push(lrTable.getGoto(stateStack.peek(),(NonTerminal) symbolStack.peek())); // 根据goto表将状态入栈
+//                    System.out.println(stateStack.peek().index());
 
                     // ...
                 }
 
                 case Accept -> {
-                    callWhenInAccept(stack_state.peek());
+                    callWhenInAccept(stateStack.peek());
                     flag = false;
                 }
 
@@ -162,8 +162,8 @@ public class SyntaxAnalyzer {
     private void stack_pop(int n) {
 
         for (int i=0;i<n;i++){
-            stack_state.pop();
-            stack_symbol.pop();
+            stateStack.pop();
+            symbolStack.pop();
         }
     }
 
